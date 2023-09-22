@@ -79,7 +79,6 @@ public class Main {
             getNextWinSteps(enemy.symbol, overview)
         );
 
-        List<Integer> preferred = getPreferred(context, game);
 
         if (game.forcedSection == null && game.log().isEmpty()) {
           sendResult(data, 4, 4);
@@ -88,6 +87,8 @@ public class Main {
         int boardIndex =
             game.forcedSection == null ? chooseNextBoard(context, game) : game.forcedSection;
         Symbol[] board = game.board[boardIndex];
+
+        List<Integer> preferred = getPreferred(context, game, board);
         int fieldIndex = getNextFieldIndex(me.symbol, board, preferred);
 
         sendResult(data, boardIndex, fieldIndex);
@@ -108,7 +109,7 @@ public class Main {
     socket.open();
   }
 
-  private static List<Integer> getPreferred(Context context, Game game) {
+  private static List<Integer> getPreferred(Context context, Game game, Symbol[] currentBoard) {
     Player me = context.me;
     Player enemy = context.enemy;
     Symbol[] overview = context.overview;
@@ -119,6 +120,8 @@ public class Main {
     List<Integer> finished = getFinished(overview);
 
     ArrayList<Integer> indexList = new ArrayList<>(all);
+//    sortByWinningCount(indexList, me.symbol, currentBoard);
+
     List<Integer> nextTurnWins = new ArrayList<>();
     List<Integer> nextTurnWinsEnemy = new ArrayList<>();
 
@@ -172,6 +175,7 @@ public class Main {
     }
 
     List<Integer> secondNextWinSteps = getSecondNextWinSteps(me, board);
+    sortByWinningCount(preferred, me, board);
     for (Integer nextWinStep : preferred) {
       if (secondNextWinSteps.contains(nextWinStep)) {
         return nextWinStep;
@@ -206,6 +210,23 @@ public class Main {
         return -1;
       }
       return 0;
+    });
+  }
+
+  private static void sortByWinningCount(List<Integer> toSort, Symbol me, Symbol[] board) {
+    Symbol other = getOther(me);
+    toSort.sort((o1, o2) -> {
+      long o1Count = winnings.stream()
+          .filter(winning -> winning.contains(o1)
+              && winning.stream()
+              .allMatch(winningIndex -> board[winningIndex] != other))
+          .count();
+      long o2Count = winnings.stream()
+          .filter(winning -> winning.contains(o2)
+              && winning.stream()
+              .allMatch(winningIndex -> board[winningIndex] != other))
+          .count();
+      return Long.compare(o2Count, o1Count);
     });
   }
 
@@ -260,8 +281,10 @@ public class Main {
     return result;
   }
 
+  private static int chooseNextBoard(Context context, Game game) {
+    return getNextFieldIndex(context.me.symbol, context.overview, new ArrayList<>(List.of(4)));
+  }
   private static List<Integer> getSecondNextWinSteps(Symbol symbol, Symbol[] board) {
-    Symbol other = getOther(symbol);
     Set<Integer> set = new LinkedHashSet<>();
 
     for (int i = 0; i < board.length; i++) {
@@ -271,38 +294,16 @@ public class Main {
             ArrayList<Integer> indexList = new ArrayList<>(winning);
             indexList.remove((Object) i);
             if (board[indexList.get(0)] == null && board[indexList.get(1)] == null) {
-              set.add(indexList.get(0));
               set.add(indexList.get(1));
+              set.add(indexList.get(0));
             }
           }
         }
       }
     }
 
-    ArrayList<Integer> result = new ArrayList<>(set);
-
-    // index nach oben der die meisten chancen hat
-    result.sort((o1, o2) -> {
-      long o1Count = winnings.stream()
-          .filter(winning -> winning.contains(o1)
-              && winning.stream()
-              .allMatch(winningIndex -> board[winningIndex] != other))
-          .count();
-      long o2Count = winnings.stream()
-          .filter(winning -> winning.contains(o2)
-              && winning.stream()
-              .allMatch(winningIndex -> board[winningIndex] != other))
-          .count();
-      return Long.compare(o2Count, o1Count);
-    });
-
-    return result;
+    return new ArrayList<>(set);
   }
-
-  private static int chooseNextBoard(Context context, Game game) {
-    return getNextFieldIndex(context.me.symbol, context.overview, List.of(4));
-  }
-
   private static Symbol[] overviewToBoard(String[] overview) {
     Symbol[] board = new Symbol[9];
     for (int i = 0; i < overview.length; i++) {
