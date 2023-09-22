@@ -15,7 +15,7 @@ import org.json.JSONArray;
 
 public class Main {
 
-  public static final String SECRET = "d20d723f-cad9-418f-ab9f-8107018a1cb7"; //Das Secret des Bot
+  public static final String SECRET = ""; //Das Secret des Bot
   public static final String GAMESERVER = "https://games.uhno.de"; //URL zum Gameserver
 
   public static final Gson gson = new Gson();
